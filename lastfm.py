@@ -1,4 +1,4 @@
- # -*- coding: latin-1 -*-
+# -*- coding: latin-1 -*-
 
 import requests
 import os
@@ -7,7 +7,6 @@ import logging
 import mutagen
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TPE1, TIT2, TXXX
-import time
 import urllib
 
 NAS = "192.168.6.35"
@@ -16,7 +15,15 @@ api_key = "f503c65f589e57d58e15a96fab986f7b"
 Music_src_dir = "//{NAS}/music/MusicBee2017/Music".format(NAS=NAS)
 
 def getTrackInfo(mp3file):
-	mbid = 0
+	"""
+	Args:
+        mp3file (str): string representation of a mp3 file.
+
+    Returns:
+        artist (str): string representation of the Artist ID3 ("TPE1") value stored in the mp3 file.
+        track (str): string representation of the Title ID3 ("TIT2") value stored in the mp3 file. 
+        mbid (str): string representation of the MusicBrainz ID value stored in the mp3 file, if it does not exist return '0'
+	"""
 	tags = ID3(mp3file)
 
 	artist = tags.getall("TPE1")[0]
@@ -115,9 +122,8 @@ def isEnglish(s):
 
 
 def setTags(mp3file):
-	try:
-		if isEnglish(mp3file):
-			#if not isTagged(mp3file):
+	try:		
+		if not isTagged(mp3file):
 			audiofile = ID3(mp3file)
 			listeners, playcount = getListenersandPlays(mp3file)
 			listeners, playcount = prependZeros(listeners, playcount)
@@ -130,6 +136,8 @@ def setTags(mp3file):
 			return listeners, playcount
 		else:
 			return 0, 0
+	except UnicodeEncodeError as uni:
+		print("Unable to encode some part of the filename " + mp3file + "\n" + "Check for special or foreign characters.")
 	except Exception as e:
 		print("Error occured in setTags with details " + str(e))
 		return 0, 0
@@ -138,10 +146,10 @@ def isTagged(mp3file):
 	try:
 		tags = ID3(mp3file)
 		playcount = tags.getall('TXXX:lastfmplaycount')[0]
-		if playcount == '0':
-			return False
-		else:
+		if str(playcount).startswith('00'):
 			return True
+		else:
+			return False
 	except IndexError as I:
 		return False
 
@@ -168,11 +176,10 @@ tempdir2 = "S:\MusicBee2017\Music\Georges Bizet"
 for root, dirs, files in os.walk(Music_src_dir):
 	for name in files:
 		file, ext = os.path.splitext(name)
-		if ext == ".mp3":
-			clearTags(os.path.join(root, name).replace("\\", "/").rstrip())	
-			# listeners, playcount = setTags(os.path.join(root, name).replace("\\", "/").rstrip())
-			# if listeners != 0:
-			# 	logging.info('File %s - Adding Listners: %s Adding Playcount: %s', name, listeners, playcount)
-			# else:
-			# 	logging.info('File %s - NO CHANGE Listners: %s Playcount: %s', name, listeners, playcount)
+		if (ext.lower() == ".mp3"):	
+			listeners, playcount = setTags(os.path.join(root, name).replace("\\", "/").rstrip())
+			if listeners != 0:
+				logging.info('File %s - Adding Listners: %s Adding Playcount: %s', name, listeners, playcount)
+			else:
+				logging.info('File %s - NO CHANGE Listners: %s Playcount: %s', name, listeners, playcount)
 			
