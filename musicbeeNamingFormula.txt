@@ -1,1 +1,12 @@
+This formula is useful for naming files within your MusicBee Library to make it easier for LastFMTagger to read the files.
+
+To Use Open MusicBee
+* Click Edit -> Preferences -> Library
+* Click the button for "Organization"
+* Paste the formula below into the naming template.
+
+Without all the Replace statements the naming convention is as follows:
+$First(<Album Artist>)\<Album>\<Disc-Track#> <Title>
+
+
 $Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($First(<Album Artist>),œ,e),é,e),ë,e),á,a),ç,c),ã,a),ú,u),ó,o),Á,A),ý,y),í,i),ð,o),æ,a),✝,t),ê,e),è,e),À,A),à,a),’,),ö,o)\$Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace(<Album>,œ,e),é,e),ë,e),á,a),ç,c),ã,a),ú,u),ó,o),Á,A),ý,y),í,i),ð,o),æ,a),✝,t),ê,e),è,e),À,A),à,a),’,),ö,o)\<Disc-Track#> $Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace($Replace(<Title>,œ,e),é,e),ë,e),á,a),ç,c),ã,a),ú,u),ó,o),Á,A),ý,y),í,i),ð,o),æ,a),✝,t),ê,e),è,e),À,A),à,a),’,),ö,o)
