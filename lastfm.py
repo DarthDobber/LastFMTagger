@@ -33,21 +33,13 @@ def getTrackInfo(mp3file):
 
 def get_mbid(file):
     try:
-        if mutagen.version >= (1,17):
-            f = mutagen.File(file, easy=True)
-            mbid = f.get('musicbrainz_trackid', '')[0]
-            #if not isinstance(mbid, basestring):
-                #mbid = mbid[0]
-            if len(mbid) < 2:
-            	mbid = '0'            
-            return mbid
-        else:
-            audio = ID3(file)
-            ufid = audio.get(u'UFID:http://musicbrainz.org')
-            return ufid.data if ufid else '0'
+        f = mutagen.File(file, easy=True)
+        mbid = f.get('musicbrainz_trackid', '')[0]
+        if len(mbid) < 2:
+        	mbid = '0'            
+        return mbid
     except Exception as e:
         print("Error occured in getmbid with details " + str(e))
-        #logger.debug('get_mbid failed: %s', e)
         return '0'
 
 def getLastFMbyMBID(mbid):
