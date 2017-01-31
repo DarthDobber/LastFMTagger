@@ -13,10 +13,10 @@ from optparse import OptionParser
 import time
 import datetime as dt
 
-# NAS = "192.168.6.35"
-# logging.basicConfig(filename='//{NAS}/Cloudstation/lastfmtag.log'.format(NAS=NAS),level=logging.DEBUG,format='%(asctime)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-# api_key = "f503c65f589e57d58e15a96fab986f7b"
-# Music_src_dir = "//{NAS}/music/MusicBee2017/Music".format(NAS=NAS)
+NAS = "192.168.6.35"
+logging.basicConfig(filename='//{NAS}/Cloudstation/lastfmtag.log'.format(NAS=NAS),level=logging.DEBUG,format='%(asctime)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+api_key = "f503c65f589e57d58e15a96fab986f7b"
+Music_src_dir = "//{NAS}/music/MusicBee2017/Music".format(NAS=NAS)
 
 def getTrackInfo(mp3file):
 	"""
@@ -135,7 +135,7 @@ def clearTags(mp3file):
 		audiofile.delall('TXXX:lastfmListeners')
 		audiofile.delall('TXXX:lastfmplaycount')
 		audiofile.save()
-		print("Done with " + mp3file)
+		print("Removed tags from " + mp3file)
 	except Exception as e:
 		print("Error occured in clearTags with details " + str(e))
 
@@ -309,11 +309,14 @@ def main():
 			if options.update:
 				#update Directory files using quick scan
 				update_list = getFileListQuick(options.dir, age=options.age)
-				for file in update_list:
-					#clearing Tags already present
-					clearTags(file)
-					# #Current Iteration Step
-				setTagsProgress(update_list)
+				if len(update_list) != 0:
+					for file in update_list:
+						#clearing Tags already present
+						clearTags(file)
+						# #Current Iteration Step
+					setTagsProgress(update_list)
+				else:
+					print("No files meet the age criteria")
 
 
 			elif options.clear:
@@ -322,14 +325,20 @@ def main():
 				confirmation = query_yes_no("Are you sure you want to clear all tags for all files in " + options.dir + " for the last " + str(options.age) + " hours?")
 				if confirmation:
 					clear_list = getFileListQuick(options.dir, age=options.age)
-					for file in clear_list:
-						clearTags(file)
+					if len(clear_list) != 0:
+						for file in clear_list:
+							clearTags(file)
+					else:
+						print("No files meet the age criteria")
 				else:
 					sys.exit()
 			else:
 				#Quick Scan that updates tags of non-tagged files in last X hours
 				update_list = getFileListQuick(options.dir, age=options.age)
-				setTagsProgress(update_list)
+				if len(update_list) != 0:
+					setTagsProgress(update_list)
+				else:
+					print("No files meet the age criteria")
 
 		#Full Directory Operations
 		elif options.clear and not options.quick:
