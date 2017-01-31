@@ -16,10 +16,10 @@ Music_src_dir = "//{NAS}/music/MusicBee2017/Music".format(NAS=NAS)
 
 def getTrackInfo(mp3file):
 	"""
-	Args:
+	@params:
         mp3file (str): string representation of a mp3 file.
 
-    Returns:
+    @returns:
         artist (str): string representation of the Artist ID3 ("TPE1") value stored in the mp3 file.
         track (str): string representation of the Title ID3 ("TIT2") value stored in the mp3 file. 
         mbid (str): string representation of the MusicBrainz ID value stored in the mp3 file, if it does not exist return '0'
@@ -151,6 +151,10 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
 		mp3 		- Optional	: mp3 file name (Str)
 		listeners 	- Optional	: number of listeners (Str)
 		playcount 	- Optional	: number of plays (Str)
+
+	@returns:
+		prints a progress bar to the screen unless a MP3 file is being tageged and in that case it will
+		return a progress bar with the file, # of listeners and # of plays
 	"""
 	percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
 	filledLength = int(length * iteration // total)
@@ -160,8 +164,8 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
 	if mp3 != '':
 		print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix))
 		print(mp3)
-		print(listeners)
-		print(playcount)
+		print("Listeners: " + listeners)
+		print("Plays: " + playcount)
 	if iteration == total: 
 		print()
 
