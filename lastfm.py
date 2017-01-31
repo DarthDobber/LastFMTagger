@@ -241,7 +241,7 @@ def getFileListQuick(dir, age=24):
 	except Exception as e:
 		print(str(e))
 		#print("Check Directory string")
-		sys.exit()
+		continue
 
 def setTagsProgress(file_list, update_freq = 1):
 	i = 0
