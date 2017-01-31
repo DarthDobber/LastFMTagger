@@ -66,7 +66,6 @@ def getLastFMbyTrack(artist, track):
 	getTrackURL2 = "http://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key={api_key}&artist={artist}&track={track}&format=json".format(api_key=api_key, artist=artist, track=track)
 	headers = {"Content-Type": "application/x-www-form-urlencoded"}
 	r = requests.post(getTrackURL2, headers=headers)
-	print("Track and Artist Lookup")
 	data = json.loads(r.text)
 	if 'track' in data:
 		listeners = data['track']['listeners']
@@ -79,13 +78,6 @@ def getLastFMbyTrack(artist, track):
 def getListenersandPlays(mp3file):
 	try:	
 		artist, track, mbid = getTrackInfo(mp3file)
-		# if mbid != '0':
-		# 	print("MBID Lookup")
-		# 	listeners, playcount = getLastFMbyMBID(mbid)
-		# 	if listeners == "error":
-		# 		print("Faling over to Track and Artist lookup")
-		# 		listeners, playcount = getLastFMbyTrack(artist, track)
-		# else:
 		print("lookup by track and artist")
 		listeners, playcount = getLastFMbyTrack(artist, track)
 			
@@ -104,24 +96,12 @@ def prependZeros(listeners, playcount):
 	play2 = str(play1) + str(playcount)
 	return list2, play2
 
-def isEnglish(s):
-    try:
-        s.decode('ascii')
-    except UnicodeDecodeError:
-        return False
-    else:
-        return True
-
-
 def setTags(mp3file):
 	try:		
 		if not isTagged(mp3file):
 			audiofile = ID3(mp3file)
 			listeners, playcount = getListenersandPlays(mp3file)
 			listeners, playcount = prependZeros(listeners, playcount)
-			print(mp3file)
-			print(listeners)
-			print(playcount)
 			audiofile.add(TXXX(encoding=3, desc=u'lastfmListeners', text=str(listeners)))
 			audiofile.add(TXXX(encoding=3, desc=u'lastfmplaycount', text=str(playcount)))
 			audiofile.save()
@@ -156,7 +136,34 @@ def clearTags(mp3file):
 	except Exception as e:
 		print("Error occured in clearTags with details " + str(e))
 
-
+# Print iterations progress
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', mp3 = '', listeners = '', playcount = ''):
+	"""
+	Call in a loop to create terminal progress bar
+	@params:
+		iteration   - Required  : current iteration (Int)
+		total       - Required  : total iterations (Int)
+		prefix      - Optional  : prefix string (Str)
+		suffix      - Optional  : suffix string (Str)
+		decimals    - Optional  : positive number of decimals in percent complete (Int)
+		length      - Optional  : character length of bar (Int)
+		fill        - Optional  : bar fill character (Str)
+		mp3 		- Optional	: mp3 file name (Str)
+		listeners 	- Optional	: number of listeners (Str)
+		playcount 	- Optional	: number of plays (Str)
+	"""
+	percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+	filledLength = int(length * iteration // total)
+	bar = fill * filledLength + '-' * (length - filledLength)
+	print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+	# Print File details if a file is updated.
+	if mp3 != '':
+		print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix))
+		print(mp3)
+		print(listeners)
+		print(playcount)
+	if iteration == total: 
+		print()
 
 file = "c:/temp/moon.mp3"
 
@@ -164,14 +171,32 @@ clearTags(file)
 tempdir = "S:\MusicBee2017\Music\Mumford & Sons"
 tempdir2 = "S:\MusicBee2017\Music\Georges Bizet"
 
-	
+file_list =[]
+
+print("Walking the Directory... May Take a while depending on the number of files")	
 for root, dirs, files in os.walk(Music_src_dir):
 	for name in files:
 		file, ext = os.path.splitext(name)
-		if (ext.lower() == ".mp3"):	
-			listeners, playcount = setTags(os.path.join(root, name).replace("\\", "/").rstrip())
-			if listeners != 0:
-				logging.info('File %s - Adding Listners: %s Adding Playcount: %s', name, listeners, playcount)
-			else:
-				logging.info('File %s - NO CHANGE Listners: %s Playcount: %s', name, listeners, playcount)
+		if (ext.lower() == ".mp3"):
+			file_list.append(os.path.join(root, name).replace("\\", "/").rstrip())
+
+#Current Iteration Step
+i = 0
+#Total number of files to look at
+l = len(file_list)
+#How often to update the progress bar.  Set to 0.5% by default
+update_freq = 1#int(l * 0.005)
+
+print("Directory Walk Completed, " + str(l) + " files detected, Beginning the tagging process")
+printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill = 'X')
+for mp3 in file_list:
+	listeners, playcount = setTags(mp3)
+	i += 1
+	if i % update_freq == 0:
+		printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill = 'X')
+	if listeners != 0:
+		logging.info('File %s - Adding Listners: %s Adding Playcount: %s', mp3, listeners, playcount)
+		printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill='X', mp3 = mp3, listeners = listeners, playcount=playcount)
+	else:
+		logging.info('File %s - NO CHANGE Listners: %s Playcount: %s', mp3, listeners, playcount)
 			
