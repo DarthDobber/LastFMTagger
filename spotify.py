@@ -13,8 +13,13 @@ from optparse import OptionParser
 import time
 import datetime as dt
 import base64
+import spotipy
+import spotipy.util as util
 
-authstring = b'065d75cdcc7142c8a155166f8466dee9:2ac84e8c76034a58a6dd4657893faa20'
+SPOTIPY_CLIENT_ID ='065d75cdcc7142c8a155166f8466dee9'
+SPOTIPY_CLIENT_SECRET ='2ac84e8c76034a58a6dd4657893faa20'
+
+OAUTH_TOKEN_URL = 'https://accounts.spotify.com/api/token'
 
 def getTrackInfo(mp3file):
 	"""
@@ -31,17 +36,24 @@ def getTrackInfo(mp3file):
 	track = tags.getall("TIT2")[0]
 	return artist, track
 
-def getSpotifyToken():
-	authtoken = base64.b64encode(authstring)
-	headers = {"Content-Type": "application/x-www-form-urlencoded", "Authorization": "Basic " + str(authtoken)}
-	print(str(authtoken))
-	params = {"grant_type": "client_credentials"}
-	getAccessTokenURL = "https://accounts.spotify.com/api/token"
 
-	r = requests.post(getAccessTokenURL, headers=headers, data=params)
-	#json.loads turns the json response into a dictionary
-	data = json.loads(r.text)
-	return data
+def _make_authorization_headers(client_id, client_secret):
+	auth_header = base64.b64encode(six.text_type(client_id + ':' + client_secret).encode('ascii'))
+	return {'Authorization': 'Basic %s' % auth_header.decode('ascii')}
+
+def getSpotifyToken():
+"""Gets client credentials access token """
+	payload = { 'grant_type': 'client_credentials'}
+
+	headers = _make_authorization_headers(self.client_id, self.client_secret)
+
+	response = requests.post(self.OAUTH_TOKEN_URL, data=payload,
+		headers=headers, verify=True)
+	if response.status_code is not 200:
+		raise SpotifyOauthError(response.reason)
+	token_info = response.json()
+		return token_info
+
 
 def getLastFMbyMBID(mbid):
 	mbid = urllib.parse.quote_plus(str(mbid))
@@ -137,36 +149,36 @@ def clearTags(mp3file):
 		print("Error occured in clearTags with details " + str(e))
 
 def query_yes_no(question, default="yes"):
-    """Ask a yes/no question via raw_input() and return their answer.
+	"""Ask a yes/no question via raw_input() and return their answer.
 
-    "question" is a string that is presented to the user.
-    "default" is the presumed answer if the user just hits <Enter>.
-        It must be "yes" (the default), "no" or None (meaning
-        an answer is required of the user).
+	"question" is a string that is presented to the user.
+	"default" is the presumed answer if the user just hits <Enter>.
+		It must be "yes" (the default), "no" or None (meaning
+		an answer is required of the user).
 
-    The "answer" return value is True for "yes" or False for "no".
-    """
-    valid = {"yes": True, "y": True, "ye": True,
-             "no": False, "n": False}
-    if default is None:
-        prompt = " [y/n] "
-    elif default == "yes":
-        prompt = " [Y/n] "
-    elif default == "no":
-        prompt = " [y/N] "
-    else:
-        raise ValueError("invalid default answer: '%s'" % default)
+	The "answer" return value is True for "yes" or False for "no".
+	"""
+	valid = {"yes": True, "y": True, "ye": True,
+			 "no": False, "n": False}
+	if default is None:
+		prompt = " [y/n] "
+	elif default == "yes":
+		prompt = " [Y/n] "
+	elif default == "no":
+		prompt = " [y/N] "
+	else:
+		raise ValueError("invalid default answer: '%s'" % default)
 
-    while True:
-        sys.stdout.write(question + prompt)
-        choice = input().lower()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' "
-                             "(or 'y' or 'n').\n")
+	while True:
+		sys.stdout.write(question + prompt)
+		choice = input().lower()
+		if default is not None and choice == '':
+			return valid[default]
+		elif choice in valid:
+			return valid[choice]
+		else:
+			sys.stdout.write("Please respond with 'yes' or 'no' "
+							 "(or 'y' or 'n').\n")
 
 # Print iterations progress
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', mp3 = '', listeners = '', playcount = ''):
