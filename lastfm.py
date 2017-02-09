@@ -354,7 +354,7 @@ def main():
 			#Update All Tags within a directory
 			update_list = getFileList(options.dir)
 			for file in update_list:
-				clearTags()
+				clearTags(file)
 			setTagsProgress(update_list)
 		else:
 			#Update Tags of files that are empty
