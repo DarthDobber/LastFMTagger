@@ -15,6 +15,8 @@ import datetime as dt
 import base64
 import spotipy
 import spotipy.util as util
+import six
+import six.moves.urllib.parse as urllibparse
 
 SPOTIPY_CLIENT_ID ='065d75cdcc7142c8a155166f8466dee9'
 SPOTIPY_CLIENT_SECRET ='2ac84e8c76034a58a6dd4657893faa20'
@@ -36,69 +38,52 @@ def getTrackInfo(mp3file):
 	track = tags.getall("TIT2")[0]
 	return artist, track
 
+def is_token_expired(token_info):
+	now = int(time.time())
+	return token_info['expires_at'] - now < 60
 
 def _make_authorization_headers(client_id, client_secret):
 	auth_header = base64.b64encode(six.text_type(client_id + ':' + client_secret).encode('ascii'))
 	return {'Authorization': 'Basic %s' % auth_header.decode('ascii')}
 
 def getSpotifyToken():
-"""Gets client credentials access token """
+	"""Gets client credentials access token """
 	payload = { 'grant_type': 'client_credentials'}
 
-	headers = _make_authorization_headers(self.client_id, self.client_secret)
+	headers = _make_authorization_headers(SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET)
 
-	response = requests.post(self.OAUTH_TOKEN_URL, data=payload,
+	response = requests.post(OAUTH_TOKEN_URL, data=payload,
 		headers=headers, verify=True)
 	if response.status_code is not 200:
 		raise SpotifyOauthError(response.reason)
 	token_info = response.json()
-		return token_info
+	return token_info['access_token']
 
+authToken = "Bearer " + getSpotifyToken()
 
-def getLastFMbyMBID(mbid):
-	mbid = urllib.parse.quote_plus(str(mbid))
-	getTrackURL1 = "http://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key={api_key}&mbid={mbid}&format=json".format(api_key=api_key, mbid=mbid)
-	headers = {"Content-Type": "application/x-www-form-urlencoded"}
-	r = requests.post(getTrackURL1, headers=headers)
-
+def searchspotify(query, type="track"):
+	query = urllib.parse.quote_plus(str(query))
+	type = urllib.parse.quote_plus(str(type))
+	searchTrackURL = "https://api.spotify.com/v1/search"
+	params = {"q": query, "type": type}
+	headers = {"Content-Type": "application/x-www-form-urlencoded", "Authorization": authToken}
+	r = requests.get(searchTrackURL, headers=headers, params=params)
 	data = json.loads(r.text)
-	if 'track' in data:
-		listeners = data['track']['listeners']
-		playcount = data['track']['playcount']
-		return listeners, playcount
-	elif 'error' in data:
-		return "error", "error"
-	else:
-		return 0, 0
+	return data
 
-
-def getLastFMbyTrack(artist, track):
-	artist = urllib.parse.quote_plus(str(artist))
-	track = urllib.parse.quote_plus(str(track))
-	print("Artist is " + artist + " And Track is " + track)
-	getTrackURL2 = "http://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key={api_key}&artist={artist}&track={track}&format=json".format(api_key=api_key, artist=artist, track=track)
-	headers = {"Content-Type": "application/x-www-form-urlencoded"}
-	r = requests.post(getTrackURL2, headers=headers)
+def getAlbumTracks(albumid):
+	query = urllib.parse.quote_plus(str(query))
+	type = urllib.parse.quote_plus(str(type))
+	searchTrackURL = "https://api.spotify.com/v1/albums/{id}/tracks".format(id=albumid)
+	headers = {"Content-Type": "application/x-www-form-urlencoded", "Authorization": authToken}
+	r = requests.get(searchTrackURL, headers=headers)
 	data = json.loads(r.text)
-	if 'track' in data:
-		listeners = data['track']['listeners']
-		playcount = data['track']['playcount']
-		return listeners, playcount
-	else:
-		return 0, 0
+	return data
+
+def getfirstAlbumID(searchData):
+	return searchData['albums']['items']['id'][0]
 
 
-def getListenersandPlays(mp3file):
-	try:	
-		artist, track, mbid = getTrackInfo(mp3file)
-		print("lookup by track and artist")
-		listeners, playcount = getLastFMbyTrack(artist, track)
-			
-		return listeners, playcount
-	except Exception as e:
-		print("Error occured in JSON Request with details " + str(e))
-		logging.error('URL error with artist: %s track %s ', artist, track)
-		return 0, 0
 
 def prependZeros(listeners, playcount):
 	numLisZeros = 10 - len(str(listeners))
@@ -180,39 +165,6 @@ def query_yes_no(question, default="yes"):
 			sys.stdout.write("Please respond with 'yes' or 'no' "
 							 "(or 'y' or 'n').\n")
 
-# Print iterations progress
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', mp3 = '', listeners = '', playcount = ''):
-	"""
-	Call in a loop to create terminal progress bar
-	@params:
-		iteration   - Required  : current iteration (Int)
-		total       - Required  : total iterations (Int)
-		prefix      - Optional  : prefix string (Str)
-		suffix      - Optional  : suffix string (Str)
-		decimals    - Optional  : positive number of decimals in percent complete (Int)
-		length      - Optional  : character length of bar (Int)
-		fill        - Optional  : bar fill character (Str)
-		mp3 		- Optional	: mp3 file name (Str)
-		listeners 	- Optional	: number of listeners (Str)
-		playcount 	- Optional	: number of plays (Str)
-
-	@returns:
-		prints a progress bar to the screen unless a MP3 file is being tageged and in that case it will
-		return a progress bar with the file, # of listeners and # of plays
-	"""
-	percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-	filledLength = int(length * iteration // total)
-	bar = fill * filledLength + '-' * (length - filledLength)
-	print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
-	# Print File details if a file is updated.
-	if mp3 != '':
-		print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix))
-		print(mp3)
-		print("Listeners: " + listeners)
-		print("Plays: " + playcount)
-	if iteration == total: 
-		print()
-
 def getFileList(dir):
 	file_list =[]
 	try:
@@ -272,7 +224,16 @@ def setTagsProgress(file_list, update_freq = 1):
 
 def main():
 
-	print(getSpotifyToken())
+	#print(getSpotifyToken())
+	results = searchspotify("Crime of the Century", "album")
+	for album in results['albums']['items']:
+		bob = album
+		for artist in bob['artists']:
+			print(bob['type'] + " " + bob['name'] + " " + artist['name'])
+	albumresults = searchspotify("Crime of the Century", "album")
+	tryid = getfirstAlbumID(albumresults)
+	print(getAlbumTracks(tryid))
+
 			
 
 if __name__ == "__main__":
