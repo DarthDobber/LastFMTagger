@@ -13,8 +13,8 @@ from optparse import OptionParser
 import time
 import datetime as dt
 import base64
-import spotipy
-import spotipy.util as util
+#import spotipy
+#import spotipy.util as util
 import six
 import six.moves.urllib.parse as urllibparse
 
@@ -36,7 +36,8 @@ def getTrackInfo(mp3file):
 
 	artist = tags.getall("TPE1")[0]
 	track = tags.getall("TIT2")[0]
-	return artist, track
+	album = tags.getall("TALB")[0]
+	return artist, track, album
 
 def is_token_expired(token_info):
 	now = int(time.time())
@@ -62,8 +63,8 @@ def getSpotifyToken():
 authToken = "Bearer " + getSpotifyToken()
 
 def searchspotify(query, type="track"):
-	query = urllib.parse.quote_plus(str(query))
-	type = urllib.parse.quote_plus(str(type))
+	#query = urllib.parse.quote_plus(str(query))
+	#type = urllib.parse.quote_plus(str(type))
 	searchTrackURL = "https://api.spotify.com/v1/search"
 	params = {"q": query, "type": type}
 	headers = {"Content-Type": "application/x-www-form-urlencoded", "Authorization": authToken}
@@ -72,16 +73,23 @@ def searchspotify(query, type="track"):
 	return data
 
 def getAlbumTracks(albumid):
-	query = urllib.parse.quote_plus(str(query))
-	type = urllib.parse.quote_plus(str(type))
+	albumid = urllib.parse.quote_plus(str(albumid))
 	searchTrackURL = "https://api.spotify.com/v1/albums/{id}/tracks".format(id=albumid)
 	headers = {"Content-Type": "application/x-www-form-urlencoded", "Authorization": authToken}
 	r = requests.get(searchTrackURL, headers=headers)
 	data = json.loads(r.text)
 	return data
 
+def getSpotifyTrackInfo(trackid):
+	trackid = urllib.parse.quote_plus(str(trackid))
+	TrackInfoURL = "https://api.spotify.com/v1/tracks/{id}".format(id=trackid)
+	headers = {"Content-Type": "application/x-www-form-urlencoded", "Authorization": authToken}
+	r = requests.get(TrackInfoURL, headers=headers)
+	data = json.loads(r.text)
+	return data
+
 def getfirstAlbumID(searchData):
-	return searchData['albums']['items']['id'][0]
+	return searchData['albums']['items'][0]['id']
 
 
 
@@ -98,25 +106,28 @@ def setTags(mp3file):
 	try:		
 		if not isTagged(mp3file):
 			audiofile = ID3(mp3file)
-			listeners, playcount = getListenersandPlays(mp3file)
-			listeners, playcount = prependZeros(listeners, playcount)
-			audiofile.add(TXXX(encoding=3, desc=u'lastfmListeners', text=str(listeners)))
-			audiofile.add(TXXX(encoding=3, desc=u'lastfmplaycount', text=str(playcount)))
+			artist, track, album = getTrackInfo(mp3file)
+			artist = urllib.parse.quote_plus(str(artist))
+			track = urllib.parse.quote_plus(str(track))
+			album = urllib.parse.quote_plus(str(album))
+			queryString = "track:{track} artist:{artist}".format(track=track, artist=artist)
+			spotifyid = searchspotify(queryString)['tracks']['items'][0]['id']
+			audiofile.add(TXXX(encoding=3, desc=u'spotifytrackid', text=str(spotifyid)))
 			audiofile.save()
-			return listeners, playcount
+			return spotifyid
 		else:
-			return 0, 0
+			return 0
 	except UnicodeEncodeError as uni:
 		print("Unable to encode some part of the filename " + mp3file + "\n" + "Check for special or foreign characters.")
 	except Exception as e:
 		print("Error occured in setTags with details " + str(e))
-		return 0, 0
+		return 0
 
 def isTagged(mp3file):
 	try:
 		tags = ID3(mp3file)
-		playcount = tags.getall('TXXX:lastfmplaycount')[0]
-		if str(playcount).startswith('00'):
+		trackid = tags.getall('TXXX:spotifytrackid')[0]
+		if trackid is not None:
 			return True
 		else:
 			return False
@@ -203,6 +214,37 @@ def getFileListQuick(dir, age=24):
 		print(str(e))
 		#print("Check Directory string")
 
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', mp3 = '', spotifyid = ''):
+	"""
+	Call in a loop to create terminal progress bar
+	@params:
+		iteration   - Required  : current iteration (Int)
+		total       - Required  : total iterations (Int)
+		prefix      - Optional  : prefix string (Str)
+		suffix      - Optional  : suffix string (Str)
+		decimals    - Optional  : positive number of decimals in percent complete (Int)
+		length      - Optional  : character length of bar (Int)
+		fill        - Optional  : bar fill character (Str)
+		mp3 		- Optional	: mp3 file name (Str)
+		listeners 	- Optional	: number of listeners (Str)
+		playcount 	- Optional	: number of plays (Str)
+
+	@returns:
+		prints a progress bar to the screen unless a MP3 file is being tageged and in that case it will
+		return a progress bar with the file, # of listeners and # of plays
+	"""
+	percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+	filledLength = int(length * iteration // total)
+	bar = fill * filledLength + '-' * (length - filledLength)
+	print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+	# Print File details if a file is updated.
+	if mp3 != '':
+		print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix))
+		print(mp3)
+		print("SpotifyID: " + spotifyid)
+	if iteration == total: 
+		print()
+
 def setTagsProgress(file_list, update_freq = 1):
 	i = 0
 	#Total number of files to look at
@@ -211,28 +253,37 @@ def setTagsProgress(file_list, update_freq = 1):
 	print("Directory Walk Completed, " + str(l) + " files detected, Beginning the tagging process")
 	printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill = 'X')
 	for mp3 in file_list:
-		listeners, playcount = setTags(mp3)
+		spotifyid = setTags(mp3)
 		i += 1
 		if i % update_freq == 0:
 			printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill = 'X')
-		if listeners != 0:
-			logging.info('File %s - Adding Listners: %s Adding Playcount: %s', mp3, listeners, playcount)
-			printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill='X', mp3 = mp3, listeners = listeners, playcount=playcount)
+		if spotifyid != 0:
+			#logging.info('File %s - Adding Listners: %s Adding Playcount: %s', mp3, listeners, playcount)
+			printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill='X', mp3 = mp3, spotifyid = spotifyid)
 		else:
-			logging.info('File %s - NO CHANGE Listners: %s Playcount: %s', mp3, listeners, playcount)
+			#logging.info('File %s - NO CHANGE Listners: %s Playcount: %s', mp3, listeners, playcount)
+			pass
 
 
 def main():
 
-	#print(getSpotifyToken())
-	results = searchspotify("Crime of the Century", "album")
-	for album in results['albums']['items']:
-		bob = album
-		for artist in bob['artists']:
-			print(bob['type'] + " " + bob['name'] + " " + artist['name'])
-	albumresults = searchspotify("Crime of the Century", "album")
-	tryid = getfirstAlbumID(albumresults)
-	print(getAlbumTracks(tryid))
+	results = searchspotify('track:school artist:supertramp album:the very best of supertramp')
+	print(results['tracks']['items'][0]['id'])
+	# albumresults = searchspotify("The Very Best of SuperTramp", "album")
+	# tryid = getfirstAlbumID(albumresults)
+	# tracks = getAlbumTracks(tryid)
+	# print(tracks.keys())
+	# print(tracks['total'])
+	# for track in tracks['items']:
+	# 	print("Track # " + str(track['track_number']) + " Name: " + track['name'])
+	# trackinfo = getTrackInfo(tracks['items'][0]['id'])
+	# print(trackinfo.keys())
+	# print(trackinfo['external_ids'])
+
+	filelist = getFileList("S:\MusicBee2017\Music")
+	setTagsProgress(filelist)
+
+
 
 			
 
