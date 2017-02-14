@@ -17,6 +17,7 @@ import base64
 #import spotipy.util as util
 import six
 import six.moves.urllib.parse as urllibparse
+import re
 
 SPOTIPY_CLIENT_ID ='065d75cdcc7142c8a155166f8466dee9'
 SPOTIPY_CLIENT_SECRET ='2ac84e8c76034a58a6dd4657893faa20'
@@ -38,6 +39,13 @@ def getTrackInfo(mp3file):
 	track = tags.getall("TIT2")[0]
 	album = tags.getall("TALB")[0]
 	return artist, track, album
+
+def getISRC(mp3file):
+	tags = ID3(mp3file)
+
+	isrc = tags.getall('TXXX:ISRC')
+
+	return str(isrc)
 
 def is_token_expired(token_info):
 	now = int(time.time())
@@ -107,11 +115,26 @@ def setTags(mp3file):
 		if not isTagged(mp3file):
 			audiofile = ID3(mp3file)
 			artist, track, album = getTrackInfo(mp3file)
+			artist, track, album = str(artist).replace(" ", "tacochina"), str(track).replace(" ", "tacochina"), str(album).replace(" ", "tacochina")
+			artist, track, album = str(artist).replace("&", "and"), str(track).replace("&", "and"), str(album).replace("&", "and")
+
+			print(track)
+
+			artist = re.sub('[\W_]+', '', artist)
+			track = re.sub('[\W_]+', '', track)
+			album = re.sub('[\W_]+', '', album)
+
+			artist, track, album = str(artist).replace("tacochina", " "), str(track).replace("tacochina", " "), str(album).replace("tacochina", " ")
+
+			print(track)
+
 			artist = urllib.parse.quote_plus(str(artist))
 			track = urllib.parse.quote_plus(str(track))
 			album = urllib.parse.quote_plus(str(album))
+			print(artist + track + album)
 			queryString = "track:{track} artist:{artist}".format(track=track, artist=artist)
-			spotifyid = searchspotify(queryString)['tracks']['items'][0]['id']
+			results = searchspotify(queryString)
+			spotifyid = results['tracks']['items'][0]['id']
 			audiofile.add(TXXX(encoding=3, desc=u'spotifytrackid', text=str(spotifyid)))
 			audiofile.save()
 			return spotifyid
@@ -121,6 +144,16 @@ def setTags(mp3file):
 		print("Unable to encode some part of the filename " + mp3file + "\n" + "Check for special or foreign characters.")
 	except Exception as e:
 		print("Error occured in setTags with details " + str(e))
+		try:
+			isrc = getISRC(mp3file)
+			queryString = "isrc:{isrc}".format(isrc=isrc)
+			results = searchspotify(queryString)
+			spotifyid = results['tracks']['items'][0]['id']
+			audiofile.add(TXXX(encoding=3, desc=u'spotifytrackid', text=str(spotifyid)))
+			audiofile.save()
+			return spotifyid
+		except Exception as e:
+			print("Failed lookup by ISRC")
 		return 0
 
 def isTagged(mp3file):
@@ -267,18 +300,28 @@ def setTagsProgress(file_list, update_freq = 1):
 
 def main():
 
-	results = searchspotify('track:school artist:supertramp album:the very best of supertramp')
-	print(results['tracks']['items'][0]['id'])
-	# albumresults = searchspotify("The Very Best of SuperTramp", "album")
-	# tryid = getfirstAlbumID(albumresults)
-	# tracks = getAlbumTracks(tryid)
-	# print(tracks.keys())
-	# print(tracks['total'])
-	# for track in tracks['items']:
-	# 	print("Track # " + str(track['track_number']) + " Name: " + track['name'])
-	# trackinfo = getTrackInfo(tracks['items'][0]['id'])
-	# print(trackinfo.keys())
-	# print(trackinfo['external_ids'])
+	artist="Alan Jackson"
+	track="Chasin that Neon Rainbow"
+
+	artist = urllib.parse.quote_plus(str(artist))
+	track = urllib.parse.quote_plus(str(track))
+
+	queryString = "track:{track} artist:{artist}".format(track=track, artist=artist)
+	results = searchspotify(queryString)
+	print(results['tracks']['items'][0]['id'])  #results['tracks']['items'][0]['name']
+
+
+
+	# # albumresults = searchspotify("The Very Best of SuperTramp", "album")
+	# # tryid = getfirstAlbumID(albumresults)
+	# # tracks = getAlbumTracks(tryid)
+	# # print(tracks.keys())
+	# # print(tracks['total'])
+	# # for track in tracks['items']:
+	# # 	print("Track # " + str(track['track_number']) + " Name: " + track['name'])
+	# # trackinfo = getTrackInfo(tracks['items'][0]['id'])
+	# # print(trackinfo.keys())
+	# # print(trackinfo['external_ids'])
 
 	filelist = getFileList("S:\MusicBee2017\Music")
 	setTagsProgress(filelist)
