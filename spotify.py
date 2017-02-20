@@ -17,6 +17,7 @@ import re
 import unicodedata
 import makeEnglish3
 import string
+from stringSanitize import remove_accents, remove_stopwords, remove_featured_artists, remove_punc, remove_paren
 
 SPOTIPY_CLIENT_ID ='065d75cdcc7142c8a155166f8466dee9'
 SPOTIPY_CLIENT_SECRET ='2ac84e8c76034a58a6dd4657893faa20'
@@ -148,6 +149,9 @@ def setSpotifyID(mp3file):
 		if not isTagged(mp3file):
 			audiofile = ID3(mp3file)
 			artist, track, album = getTrackInfo(mp3file)
+			if artist == 'The Go-Betweens':
+				artist = 'Go Betweens'
+			artist, track, album = remove_stopwords(str(artist)), remove_stopwords(str(track)), remove_stopwords(str(album))
 			artist, track, album = str(artist).replace(" ", "tacochina"), str(track).replace(" ", "tacochina"), str(album).replace(" ", "tacochina")
 			artist, track, album = str(artist).replace("&", "and"), str(track).replace("&", "and"), str(album).replace("&", "and")
 
@@ -157,17 +161,17 @@ def setSpotifyID(mp3file):
 			# track = re.sub('[\W_]+', '', track)
 			# album = re.sub('[\W_]+', '', album)
 
-			artist = remove_accents(artist)
-			track = remove_accents(track)
-			album = remove_accents(album)
+			artist = remove_punc(remove_accents(remove_paren(artist)))
+			track = remove_punc(remove_accents(remove_paren(track)))
+			album = remove_punc(remove_accents(remove_paren(album)))
 
 			artist, track, album = str(artist).replace("tacochina", " "), str(track).replace("tacochina", " "), str(album).replace("tacochina", " ")
 
 			print(track)
 
-			artist = urllib.parse.quote_plus(str(artist))
-			track = urllib.parse.quote_plus(str(track))
-			album = urllib.parse.quote_plus(str(album))
+			#artist = urllib.parse.quote_plus(str(artist))
+			#track = urllib.parse.quote_plus(str(track))
+			#album = urllib.parse.quote_plus(str(album))
 			queryString = "track:{track} artist:{artist}".format(track=track, artist=artist)
 			print(queryString)
 			results = searchspotify(queryString)
@@ -199,11 +203,17 @@ def setSpotifyID(mp3file):
 		return 0
 
 def setSpotifyStats(mp3file):
-	try:		
+	try:
 		if not isTaggedstats(mp3file):
 			audiofile = ID3(mp3file)
 
-			spotifyid = audiofile.getall('TXXX:spotifytrackid')[0]
+			try:
+				spotifyid = audiofile.getall('TXXX:spotifytrackid')[0]
+			except Exception as e:
+				try:
+					spotifyid = audiofile.getall('TXXX:SPOTIFYTRACKID')[0]
+				except Exception as e:
+					print("Unable to load spotifyid from file " + e)
 
 			spotifyid = urllib.parse.quote_plus(str(spotifyid))
 
@@ -214,6 +224,7 @@ def setSpotifyStats(mp3file):
 			acoustic, energy, mood, dance, tempo = getSpotifyAudioFeatures(spotifyid)
 
 			acoustic1, energy1, mood1, dance1, tempo1 = prependZeros(round(acoustic,1), round(energy,1), round(mood,1), round(dance,1), round(tempo,1))
+
 
 			if not doesTagExist('spotifyenergy', mp3file):
 				audiofile.add(TXXX(encoding=3, desc=u'spotifyenergy', text=str(energy1)))
@@ -274,6 +285,8 @@ def isTagged(mp3file):
 def clearTags(mp3file):
 	try:
 		audiofile = ID3(mp3file)
+		audiofile.delall('TXXX:spotifytempo')
+		audiofile.delall('TXXX:spotifypopularity')
 		audiofile.delall('TXXX:spotifyenergy')
 		audiofile.delall('TXXX:spotifyacoustic')
 		audiofile.delall('TXXX:spotifymood')
@@ -458,33 +471,18 @@ def setIDProgress(file_list, update_freq = 1):
 			#logging.info('File %s - NO CHANGE Listners: %s Playcount: %s', mp3, listeners, playcount)
 			pass
 
-def remove_accents(data):
-	bob = data.replace('+', 'and')
-	bob = bob.replace('-', 'tacochina')
-	bob = ''.join(x for x in unicodedata.normalize('NFD', bob) if x in string.ascii_letters).lower()
-	return bob
-
-def remove_featured_artists(string):
-	artist = string
-	if 'feat' in string:
-		artist, featartist = string.split('feat')
-	if 'with' in string:
-		artist, featartist = string.split('with')
-	return artist
-
-
 def main():
 
-	artist="Alan Jackson"
+	artist="Alan Jackson (bob) ' / ?"
 	track="Chasin that Neon Rainbow"
 
-	artist = urllib.parse.quote_plus(str(artist))
-	track = urllib.parse.quote_plus(str(track))
 
-	queryString = "track:{track} artist:{artist}".format(track=track, artist=artist)
-	results = searchspotify(queryString)
-	print(results['tracks']['items'][0]['id'])
+	# artist = urllib.parse.quote_plus(str(artist))
+	# track = urllib.parse.quote_plus(str(track))
 
+	# queryString = "track:{track} artist:{artist}".format(track=track, artist=artist)
+	# results = searchspotify(queryString)
+	# print(results['tracks']['items'][0]['id'])
 
 
 	# # albumresults = searchspotify("The Very Best of SuperTramp", "album")
@@ -498,8 +496,14 @@ def main():
 	# # print(trackinfo.keys())
 	# # print(trackinfo['external_ids'])
 
-	filelist = getFileList("S:\MusicBee2017\Music")
+	# filelist = getFileList("S:\MusicBee2017\Music")
+	# setIDProgress(filelist)
+
+	filelist = getFileListQuick("s:/MusicBee2017/Music", age=4)
+	# filelist = getFileListQuick("S:\MusicBee2017\Music", age=1)
+	setIDProgress(filelist)
 	setTagsProgress(filelist)
+
 
 	# one, two, three = getSpotifyAudioFeatures("6zPXWXS2pZwSsIM7f08Mg5")
 	# acoustic, energy, mood = prependZeros(round(one,1), round(two,1), round(three,1))

@@ -12,6 +12,7 @@ import sys
 from optparse import OptionParser
 import time
 import datetime as dt
+import spotify
 
 NAS = "192.168.6.35"
 logging.basicConfig(filename='//{NAS}/Cloudstation/lastfmtag.log'.format(NAS=NAS),level=logging.DEBUG,format='%(asctime)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -315,6 +316,8 @@ def main():
 						clearTags(file)
 						# #Current Iteration Step
 					setTagsProgress(update_list)
+					spotify.setIDProgress(update_list)
+					spotify.setTagsProgress(update_list)
 				else:
 					print("No files meet the age criteria")
 
@@ -337,6 +340,8 @@ def main():
 				update_list = getFileListQuick(options.dir, age=options.age)
 				if len(update_list) != 0:
 					setTagsProgress(update_list)
+					spotify.setIDProgress(update_list)
+					spotify.setTagsProgress(update_list)
 				else:
 					print("No files meet the age criteria")
 
@@ -360,6 +365,8 @@ def main():
 			#Update Tags of files that are empty
 			update_list = getFileList(options.dir)
 			setTagsProgress(update_list)
+			spotify.setIDProgress(update_list)
+			spotify.setTagsProgress(update_list)
 
 	# if options.dir and options.quick and options.update:
 	# 	file_list = getFileListQuick(options.dir, age=options.quick)
