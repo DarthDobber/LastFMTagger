@@ -9,7 +9,8 @@ def getAlbumID(query):
 def getAlbumTracks(spotifyID):
 	albumTrackURL = "https://api.spotify.com/v1/albums/{id}/tracks".format(id=spotifyID)
 	headers = {"Content-Type": "application/x-www-form-urlencoded", "Authorization": authToken}
-	r = requests.get(searchTrackURL, headers=headers)
+	params = {"limit": "50"}
+	r = requests.get(searchTrackURL, headers=headers, params=params)
 	data = json.loads(r.text)
 	return data
 
