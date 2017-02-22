@@ -15,7 +15,6 @@ import six
 import six.moves.urllib.parse as urllibparse
 import re
 import unicodedata
-import makeEnglish3
 import string
 from stringSanitize import remove_accents, remove_stopwords, remove_featured_artists, remove_punc, remove_paren
 
@@ -499,10 +498,10 @@ def main():
 	# filelist = getFileList("S:\MusicBee2017\Music")
 	# setIDProgress(filelist)
 
-	filelist = getFileListQuick("s:/MusicBee2017/Music", age=4)
-	# filelist = getFileListQuick("S:\MusicBee2017\Music", age=1)
-	setIDProgress(filelist)
-	setTagsProgress(filelist)
+	# filelist = getFileListQuick("s:/MusicBee2017/Music", age=4)
+	# # filelist = getFileListQuick("S:\MusicBee2017\Music", age=1)
+	# setIDProgress(filelist)
+	# setTagsProgress(filelist)
 
 
 	# one, two, three = getSpotifyAudioFeatures("6zPXWXS2pZwSsIM7f08Mg5")

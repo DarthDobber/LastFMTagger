@@ -13,7 +13,8 @@ def getSpotifyID(mp3file):
 	"""
 	tags = ID3(mp3file)
 
-	spotifyID = tags.getall("spotifytrackid")[0]
+	spotifyID = tags.getall("TXXX:spotifytrackid")[0]
+
 	return spotifyID
 
 def inChart(spotifyID):
@@ -59,19 +60,24 @@ def setTags(mp3file):
 		if not isTagged(mp3file):
 			audiofile = ID3(mp3file)
 			spotifyID = getSpotifyID(mp3file)
-			if spotifyID is not None:				
-				peakPos, weeks = getChartValues(mp3file)
-				peakPos, weeks = prependZeros(peakPos, weeks)
-				audiofile.add(TXXX(encoding=3, desc=u'hot100peakpos', text=str(peakPos)))
-				audiofile.add(TXXX(encoding=3, desc=u'hot100weeks', text=str(weeks)))
-				audiofile.save()
-			return peakPos, weeks
+			if spotifyID is not None:
+				if inChart(spotifyID):
+					print(spotifyID)	
+					peakPos, weeks = getChartValues(spotifyID)
+					print(peakPos + "," + weeks)
+					peakPos, weeks = prependZeros(peakPos, weeks)
+					print(peakPos + "," + weeks)
+					audiofile.add(TXXX(encoding=3, desc=u'hot100peakpos', text=str(peakPos)))
+					audiofile.add(TXXX(encoding=3, desc=u'hot100weeks', text=str(weeks)))
+					audiofile.save()
+					return peakPos, weeks
+			return 0, 0
 		else:
 			return 0, 0
 	except UnicodeEncodeError as uni:
 		print("Unable to encode some part of the filename " + mp3file + "\n" + "Check for special or foreign characters.")
 	except Exception as e:
-		print("Error occured in setTags with details " + str(e))
+		print("Error occured in Hot 100 setTags with details " + str(e))
 		return 0, 0
 
 def setTagsProgress(file_list, update_freq = 1):
@@ -86,11 +92,10 @@ def setTagsProgress(file_list, update_freq = 1):
 		i += 1
 		if i % update_freq == 0:
 			printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill = 'X')
-		if listeners != 0:
-			logging.info('File %s - Adding Listners: %s Adding Playcount: %s', mp3, peakPos, weeks)
-			printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill='X', mp3 = mp3, listeners = listeners, playcount=playcount)
+		if peakPos != 0:
+			printProgressBar(i, l, prefix = 'Progress:', suffix = 'Complete', length = 50, fill='X', mp3 = mp3, peakPos = peakPos, weeks=weeks)
 		else:
-			logging.info('File %s - NO CHANGE Listners: %s Playcount: %s', mp3, peakPos, weeks)
+			pass
 
 # Print iterations progress
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', mp3 = '', peakPos = '', weeks = ''):
@@ -125,6 +130,3 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
 	if iteration == total: 
 		print()
 
-if inChart('4jWG3QVhK55wARclW4eomT'):
-	p, w = getChartValues('4jWG3QVhK55wARclW4eomT')
-	print("Peak Position: " + p + " Number of Weeks: " + w)
